@@ -1,5 +1,9 @@
+
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Routing.Tree;
+
+// records for clean, immutable DTOs
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,8 +40,7 @@ app.MapGet("/{shortCode}", (string shortCode) =>
     }
     return Results.NotFound();
 });
-
-
-// records for clean, immutable DTOs
+app.Run();
 public record LinkRequest(string Url);
 public record LinkResponse(string ShortenedUrl);
+
