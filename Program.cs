@@ -27,6 +27,16 @@ app.MapPost("/shorten", (LinkRequest request, HttpContext context) =>
     return Results.Ok(new LinkResponse(resultUrl));
 });
 
+//handle redirect
+app.MapGet("/{shortCode}", (string shortCode) =>
+{
+    if (links.TryGetValue(shortCode, out var longUrl))
+    {
+        return Results.Redirect(longUrl, permanent: true);
+    }
+    return Results.NotFound();
+});
+
 
 // records for clean, immutable DTOs
 public record LinkRequest(string Url);
