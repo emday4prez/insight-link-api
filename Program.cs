@@ -1,3 +1,6 @@
+using System.Collections.Concurrent;
+using Microsoft.AspNetCore.Routing.Tree;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -6,36 +9,25 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// in memory db
+var links = new ConcurrentDictionary<string, string>();
+
+app.MapPost("/shorten", (LinkRequest request, HttpContext context) =>
 {
-    app.MapOpenApi();
-}
+    if (!Uri.TryCreate(request.Url, UriKind.Absolute, out var inputUri))
+    {
+        return Results.BadRequest("A valid, absolute URL is required.");
+    }
 
-app.UseHttpsRedirection();
+    var shortCode = Guid.NewGuid().ToString("N")[..8];
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    links.TryAdd(shortCode, request.Url);
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    var resultUrl = $"{context.Request.Scheme}://{context.Request.Host}/{shortCode}";
+    return Results.Ok(new LinkResponse(resultUrl));
+});
 
-app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+// records for clean, immutable DTOs
+public record LinkRequest(string Url);
+public record LinkResponse(string ShortenedUrl);
