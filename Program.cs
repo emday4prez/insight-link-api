@@ -1,14 +1,16 @@
-
 using System.Collections.Concurrent;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Routing.Tree;
+using Microsoft.EntityFrameworkCore;
 
 // records for clean, immutable DTOs
 
-
 var builder = WebApplication.CreateBuilder(args);
+var connectionString = builder.Configuration.GetConnectionString("Database");
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.AddDbContext<LinkDbContext>(options =>
+options.UseSqlServer(connectionString));
+
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
@@ -40,7 +42,7 @@ app.MapGet("/{shortCode}", (string shortCode) =>
     }
     return Results.NotFound();
 });
+
 app.Run();
 public record LinkRequest(string Url);
 public record LinkResponse(string ShortenedUrl);
-
