@@ -1,24 +1,20 @@
-using System.Collections.Concurrent;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
-using Microsoft.AspNetCore.Routing.Tree;
 using Microsoft.EntityFrameworkCore;
 
-// records for clean, immutable DTOs
+
 
 var builder = WebApplication.CreateBuilder(args);
+
+// --- Configuration ---
 var connectionString = builder.Configuration.GetConnectionString("Database");
-
 builder.Services.AddDbContext<LinkDbContext>(options =>
-options.UseSqlServer(connectionString));
-
-builder.Services.AddOpenApi();
+    options.UseSqlServer(connectionString));
 
 var app = builder.Build();
 
-// in memory db
-var links = new ConcurrentDictionary<string, string>();
+// --- API Endpoints ---
 
-app.MapPost("/shorten", (LinkRequest request, HttpContext context) =>
+// POST /shorten
+app.MapPost("/shorten", async (LinkRequest request, HttpContext context, LinkDbContext db) =>
 {
     if (!Uri.TryCreate(request.Url, UriKind.Absolute, out var inputUri))
     {
@@ -27,23 +23,38 @@ app.MapPost("/shorten", (LinkRequest request, HttpContext context) =>
 
     var shortCode = Guid.NewGuid().ToString("N")[..8];
 
-    links.TryAdd(shortCode, request.Url);
+    var newLink = new Link
+    {
+        OriginalUrl = request.Url,
+        ShortCode = shortCode,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    await db.Links.AddAsync(newLink);
+    await db.SaveChangesAsync();
 
     var resultUrl = $"{context.Request.Scheme}://{context.Request.Host}/{shortCode}";
     return Results.Ok(new LinkResponse(resultUrl));
 });
 
-//handle redirect
-app.MapGet("/{shortCode}", (string shortCode) =>
+
+// GET /{shortCode}
+app.MapGet("/{shortCode}", async (string shortCode, LinkDbContext db) =>
 {
-    if (links.TryGetValue(shortCode, out var longUrl))
+    var link = await db.Links.FirstOrDefaultAsync(l => l.ShortCode == shortCode);
+
+    if (link is null)
     {
-        return Results.Redirect(longUrl, permanent: true);
+        return Results.NotFound();
     }
-    return Results.NotFound();
+
+    return Results.Redirect(link.OriginalUrl, permanent: true);
 });
+
 
 app.Run();
 
+
+// Defines our DTOs
 public record LinkRequest(string Url);
 public record LinkResponse(string ShortenedUrl);
