@@ -44,5 +44,6 @@ app.MapGet("/{shortCode}", (string shortCode) =>
 });
 
 app.Run();
+
 public record LinkRequest(string Url);
 public record LinkResponse(string ShortenedUrl);
