@@ -1,2 +1,2 @@
-#URL Shortener with C# & Azure
-## dotnet CLI
+# URL Shortener with C# & Azure
+## CLI: dotnet & az
